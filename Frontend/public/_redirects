@@ -1,0 +1,5 @@
+/*  /index.html  200
+/authentication/google/callback  /  200
+/authentication/github/callback  /  200
+/sociallogin/error/google  /login  200
+/sociallogin/error/github  /login  200
