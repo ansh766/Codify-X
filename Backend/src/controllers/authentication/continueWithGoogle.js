@@ -7,8 +7,12 @@ const jwt = require("jsonwebtoken");
 const redirectToGooglePage = (req, res) => {
   const url = oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email']
+    scope: [
+      'https://www.googleapis.com/auth/userinfo.profile',
+      'https://www.googleapis.com/auth/userinfo.email'
+    ]
   });
+
   res.redirect(url);
 }
 
@@ -21,54 +25,80 @@ const authWithGoogle = async (req, res) => {
   try {
     const { tokens } = await oauth2Client.getToken(code);
 
-  console.log("Google token received:", {
-    access_token: !!tokens.access_token,
-    refresh_token: !!tokens.refresh_token,
-    token_type: tokens.token_type
-  });
+    // Temporary debugging: only checks whether token exists.
+    // It does NOT print the actual token or secret.
+    console.log("Google token received:", {
+      access_token: !!tokens.access_token,
+      refresh_token: !!tokens.refresh_token,
+      token_type: tokens.token_type
+    });
 
+    oauth2Client.setCredentials(tokens);
 
-    const {data: userInfo} = await oauth2.userinfo.get();
+    const oauth2 = google.oauth2({
+      auth: oauth2Client,
+      version: 'v2',
+    });
 
-    let user = await User.findOne({emailId:userInfo.email});
+    const { data: userInfo } = await oauth2.userinfo.get();
 
-    // if user doesn't exist with the given emailId then creating a new one
+    let user = await User.findOne({ emailId: userInfo.email });
+
+    // If user doesn't exist with the given emailId, create a new one
     if (!user) {
-      const newUser = { 
-        emailId: userInfo.email, 
-        username: userInfo.given_name + (userInfo.family_name || '') + Math.floor(Math.random() * 50) + 1,
-        fullName: userInfo.name || null, 
-        emailVerified: userInfo.verified_email || false, 
-      }
+      const newUser = {
+        emailId: userInfo.email,
+        username:
+          userInfo.given_name +
+          (userInfo.family_name || '') +
+          Math.floor(Math.random() * 50) +
+          1,
+        fullName: userInfo.name || null,
+        emailVerified: userInfo.verified_email || false,
+      };
 
       user = await User.create(newUser);
-    }
-    else {
-      if(!user.emailVerified && userInfo.verified_email) 
+    } else {
+      if (!user.emailVerified && userInfo.verified_email)
         user.emailVerified = true;
-      if(!user.fullName && userInfo.name)
-        user.fullName = userInfo.name
+
+      if (!user.fullName && userInfo.name)
+        user.fullName = userInfo.name;
 
       await user.save();
     }
-    
-    // generating jwt token
-    const token = jwt.sign({ _id: user._id, username: user.username, emailId: user.emailId, role: user.role }, process.env.JWT_KEY, { expiresIn: 3600 });
 
-    // sending cookie and redirect
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        _id: user._id,
+        username: user.username,
+        emailId: user.emailId,
+        role: user.role
+      },
+      process.env.JWT_KEY,
+      { expiresIn: 3600 }
+    );
+
+    // Send cookie and redirect
     res.cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        maxAge: 3600000
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 3600000
     });
-    
+
     res.redirect(process.env.FRONTEND_ORIGIN);
-    
+
   } catch (error) {
     console.error('OAuth Error:', error);
-    res.redirect(`${process.env.FRONTEND_ORIGIN}/sociallogin/error/google`);
+    res.redirect(
+      `${process.env.FRONTEND_ORIGIN}/sociallogin/error/google`
+    );
   }
 }
 
-module.exports = { redirectToGooglePage, authWithGoogle };
+module.exports = {
+  redirectToGooglePage,
+  authWithGoogle
+};
