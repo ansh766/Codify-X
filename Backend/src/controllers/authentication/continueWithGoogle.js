@@ -43,7 +43,11 @@ const authWithGoogle = async (req, res) => {
       version: 'v2',
     });
 
-    const { data: userInfo } = await oauth2.userinfo.get();
+    const { data: userInfo } = await oauth2.userinfo.get({
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`
+      }
+    });
 
     let user = await User.findOne({
       emailId: userInfo.email
