@@ -12,14 +12,12 @@ const redirectToGooglePage = (req, res) => {
       'https://www.googleapis.com/auth/userinfo.email'
     ]
   });
-
   res.redirect(url);
 }
 
 // Handle callback and get tokens
 const authWithGoogle = async (req, res) => {
   const code = req.query.code;
-
   if (!code) return res.send('No code received');
 
   try {
@@ -43,11 +41,10 @@ const authWithGoogle = async (req, res) => {
       version: 'v2',
     });
 
-    const { data: userInfo } = await oauth2.userinfo.get({
-      headers: {
-        Authorization: `Bearer ${tokens.access_token}`
-      }
-    });
+    // FIX: removed manual Authorization header — oauth2Client
+    // already attaches it via setCredentials(). Sending both caused
+    // Google to reject the request with 401 Unauthorized.
+    const { data: userInfo } = await oauth2.userinfo.get();
 
     let user = await User.findOne({
       emailId: userInfo.email
@@ -65,15 +62,12 @@ const authWithGoogle = async (req, res) => {
         fullName: userInfo.name || null,
         emailVerified: userInfo.verified_email || false,
       };
-
       user = await User.create(newUser);
     } else {
       if (!user.emailVerified && userInfo.verified_email)
         user.emailVerified = true;
-
       if (!user.fullName && userInfo.name)
         user.fullName = userInfo.name;
-
       await user.save();
     }
 
@@ -103,10 +97,8 @@ const authWithGoogle = async (req, res) => {
     });
 
     res.redirect(process.env.FRONTEND_ORIGIN);
-
   } catch (error) {
     console.error('OAuth Error:', error);
-
     res.redirect(
       `${process.env.FRONTEND_ORIGIN}/sociallogin/error/google`
     );
