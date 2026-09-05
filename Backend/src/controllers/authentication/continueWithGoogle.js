@@ -20,12 +20,13 @@ const authWithGoogle = async (req, res) => {
 
   try {
     const { tokens } = await oauth2Client.getToken(code);
-    oauth2Client.setCredentials(tokens);
 
-    const oauth2 = google.oauth2({
-      auth: oauth2Client,
-      version: 'v2',
-    });
+  console.log("Google token received:", {
+    access_token: !!tokens.access_token,
+    refresh_token: !!tokens.refresh_token,
+    token_type: tokens.token_type
+  });
+
 
     const {data: userInfo} = await oauth2.userinfo.get();
 
