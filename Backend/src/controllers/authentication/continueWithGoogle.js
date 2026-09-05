@@ -25,8 +25,6 @@ const authWithGoogle = async (req, res) => {
   try {
     const { tokens } = await oauth2Client.getToken(code);
 
-    // Temporary debugging: only checks whether token exists.
-    // It does NOT print the actual token or secret.
     console.log("Google token received:", {
       access_token: !!tokens.access_token,
       refresh_token: !!tokens.refresh_token,
@@ -35,6 +33,11 @@ const authWithGoogle = async (req, res) => {
 
     oauth2Client.setCredentials(tokens);
 
+    console.log("Credential check:", {
+      hasAccessToken: !!oauth2Client.credentials.access_token,
+      tokenType: oauth2Client.credentials.token_type
+    });
+
     const oauth2 = google.oauth2({
       auth: oauth2Client,
       version: 'v2',
@@ -42,7 +45,9 @@ const authWithGoogle = async (req, res) => {
 
     const { data: userInfo } = await oauth2.userinfo.get();
 
-    let user = await User.findOne({ emailId: userInfo.email });
+    let user = await User.findOne({
+      emailId: userInfo.email
+    });
 
     // If user doesn't exist with the given emailId, create a new one
     if (!user) {
@@ -77,14 +82,19 @@ const authWithGoogle = async (req, res) => {
         role: user.role
       },
       process.env.JWT_KEY,
-      { expiresIn: 3600 }
+      {
+        expiresIn: 3600
+      }
     );
 
     // Send cookie and redirect
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      sameSite:
+        process.env.NODE_ENV === "production"
+          ? "none"
+          : "lax",
       maxAge: 3600000
     });
 
@@ -92,6 +102,7 @@ const authWithGoogle = async (req, res) => {
 
   } catch (error) {
     console.error('OAuth Error:', error);
+
     res.redirect(
       `${process.env.FRONTEND_ORIGIN}/sociallogin/error/google`
     );
