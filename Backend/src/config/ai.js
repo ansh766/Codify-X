@@ -38,7 +38,7 @@ const generateContent = async (params) => {
   // Groq model – best for code: mixtral or llama3
  const completion = await groq.chat.completions.create({
   messages,
-  model: 'llama-3.3-70b-versatile',   // or 'llama-3.1-8b-instant' / 'gemma2-9b-it'
+  model: 'openai/gpt-oss-120b',   // or 'llama-3.1-8b-instant' / 'gemma2-9b-it'
   temperature,
 });
   return {
